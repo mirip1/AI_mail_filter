@@ -38,7 +38,7 @@ services:
       context: ./mail-classifier
       dockerfile: Dockerfile
     environment:
-      MODEL_PATH: /models/all-MiniLM-L6-v2
+      MODEL_NAME: all-MiniLM-L6-v2
       OLLAMA_URL: 'http://ollama:11434'
       TELEGRAM_CHAT_ID: 123456789
       TELEGRAM_TOKEN: '${TELEGRAM_TOKEN}'

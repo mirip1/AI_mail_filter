@@ -1,10 +1,7 @@
+sentence-transformers==2.5.1
+transformers==4.37.2
+torch==2.1.2
 fastapi
-uvicorn[standard]
-sentence-transformers
-scikit-learn
-numpy
-scipy
-beautifulsoup4
+uvicorn
 requests
-dateparser
-python-dateutil
+python-dotenv

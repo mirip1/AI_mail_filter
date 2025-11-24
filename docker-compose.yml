@@ -15,11 +15,12 @@ services:
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_PORT: 5432
       DB_POSTGRESDB_DATABASE: n8n
+      N8N_PROTOCOL: http
       DB_POSTGRESDB_USER: n8n
       DB_POSTGRESDB_PASSWORD: n8n_pass
-      N8N_HOST: n8n.example.com
+      N8N_HOST: 161.97.137.233
       N8N_PORT: 5678
-      WEBHOOK_URL: 'https://www.mivel.eu/'
+      WEBHOOK_URL: 'http://161.97.137.233:5678/'
     ports:
       - '5678:5678'
     depends_on:

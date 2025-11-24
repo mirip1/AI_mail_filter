@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+sentence-transformers
+scikit-learn
+numpy
+scipy
+beautifulsoup4
+requests
+dateparser
+python-dateutil

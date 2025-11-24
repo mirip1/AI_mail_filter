@@ -1,0 +1,49 @@
+version: '3.8'
+services:
+  postgres:
+    image: 'postgres:15'
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: n8n_pass
+      POSTGRES_DB: n8n
+    volumes:
+      - 'pgdata:/var/lib/postgresql/data'
+  n8n:
+    image: 'n8nio/n8n:latest'
+    environment:
+      DB_TYPE: postgres
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: n8n_pass
+      N8N_HOST: n8n.example.com
+      N8N_PORT: 5678
+      WEBHOOK_URL: 'https://www.mivel.eu/'
+    ports:
+      - '5678:5678'
+    depends_on:
+      - postgres
+  ollama:
+    image: 'ollama/ollama:latest'
+    volumes:
+      - 'ollama_data:/root/.ollama'
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    ports:
+      - '11434:11434'
+  mail-classifier:
+    build:
+      context: ./mail-classifier
+      dockerfile: Dockerfile
+    environment:
+      MODEL_PATH: /models/all-MiniLM-L6-v2
+      OLLAMA_URL: 'http://ollama:11434'
+      TELEGRAM_CHAT_ID: 123456789
+      TELEGRAM_TOKEN: '${TELEGRAM_TOKEN}'
+    depends_on:
+      - ollama
+    restart: always
+volumes:
+  pgdata: null
+  ollama_data: null

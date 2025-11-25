@@ -21,6 +21,7 @@ services:
       N8N_HOST: 161.97.137.233
       N8N_PORT: 5678
       WEBHOOK_URL: 'http://161.97.137.233:5678/'
+      N8N_SECURE_COOKIE: 'false'
       EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
       EXECUTIONS_DATA_SAVE_ON_ERROR: all
       N8N_LOG_LEVEL: info

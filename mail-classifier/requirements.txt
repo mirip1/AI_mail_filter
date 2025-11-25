@@ -1,6 +1,7 @@
 sentence-transformers==2.5.1
 transformers==4.37.2
 torch==2.1.2
+numpy<2
 fastapi
 uvicorn
 requests

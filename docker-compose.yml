@@ -19,7 +19,7 @@ services:
       DB_POSTGRESDB_PASSWORD: n8n_pass
       N8N_PROTOCOL: https
       N8N_HOST: n8n.mivel.eu
-      N8N_PORT: 443
+      N8N_PORT: 5678
       WEBHOOK_URL: 'https://n8n.mivel.eu/'
       N8N_SECURE_COOKIE: 'true'
       EXECUTIONS_DATA_SAVE_ON_SUCCESS: all

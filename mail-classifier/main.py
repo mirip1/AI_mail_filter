@@ -24,12 +24,12 @@ logger = logging.getLogger("mail-classifier")
 
 # ----- Configuration from env -----
 MODEL_NAME = os.getenv("MODEL_NAME", "all-MiniLM-L6-v2")
-MODEL_PATH = os.getenv("MODEL_PATH")  # if you want to mount a model dir
+MODEL_PATH = os.getenv("MODEL_PATH")  
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 NOTIFY_THRESHOLD = float(os.getenv("NOTIFY_THRESHOLD", "0.80"))
-FALLBACK_THRESHOLD = float(os.getenv("FALLBACK_THRESHOLD", "0.45"))  # between rules and definite
+FALLBACK_THRESHOLD = float(os.getenv("FALLBACK_THRESHOLD", "0.45"))  
 DATA_DIR = os.getenv("DATA_DIR", "/data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -138,3 +138,150 @@ def rules_quick_check(subject: str, sender: str, body: str, has_attachment: bool
     """
     subj = subject.lower() if subject else ""
     sfrom = sender.lower() if sender else ""
+    body_lower = body.lower() if body else ""
+
+    # 1) PNR codes
+    pnr_codes = extract_pnr(body)
+    if pnr_codes:
+        return (True, f"Código PNR detectado: {pnr_codes[0]}", "flight")
+
+    # 2) Amounts
+    amounts = extract_amounts(body)
+    if amounts:
+        return (True, f"Importe detectado: {amounts[0]}", "financial")
+
+    # 3) Keywords in subject
+    important_keywords = ["factura", "invoice", "pago", "payment", "confirmación", "confirmation", "reserva", "booking"]
+    for kw in important_keywords:
+        if kw in subj:
+            return (True, f"Palabra clave en asunto: '{kw}'", "important_keyword")
+
+    # 4) Dates in near future
+    dates = try_extract_dates(body)
+    if dates:
+        now = datetime.now()
+        for d in dates:
+            if d > now:
+                delta = (d - now).days
+                if delta <= 30:
+                    return (True, f"Fecha próxima detectada: {d.strftime('%Y-%m-%d')}", "upcoming_event")
+
+    return (False, "", "")
+
+
+# ----- Pydantic models -----
+class EmailClassifyRequest(BaseModel):
+    subject: str = ""
+    from_: str = ""
+    body: str = ""
+    date: Optional[str] = None
+    has_attachment: bool = False
+
+    class Config:
+        fields = {"from_": "from"}
+
+
+class EmailClassifyResponse(BaseModel):
+    important: bool
+    reason: str
+    confidence: float
+    category: str = ""
+    subject: str = ""
+    from_: str = ""
+
+    class Config:
+        fields = {"from_": "from"}
+
+
+# ----- Main endpoint -----
+@app.post("/classify", response_model=EmailClassifyResponse)
+async def classify_email(req: EmailClassifyRequest):
+    """
+    Classify an email as important or not.
+    """
+    try:
+        # Extract text from HTML if needed
+        body_text = html_to_text(req.body) if req.body else ""
+        body_clean = clean_text(body_text)
+
+        # 1) Quick rules check
+        matched, reason, category = rules_quick_check(
+            req.subject, req.from_, body_clean, req.has_attachment
+        )
+        if matched:
+            return EmailClassifyResponse(
+                important=True,
+                reason=reason,
+                confidence=0.95,
+                category=category,
+                subject=req.subject,
+                from_=req.from_
+            )
+
+        # 2) If we have a trained classifier, use it
+        if clf is not None:
+            combined_text = f"{req.subject} {body_clean}"
+            emb = embedder.encode([combined_text], convert_to_numpy=True)
+            pred = clf.predict(emb)[0]
+            proba = clf.predict_proba(emb)[0]
+            confidence = float(max(proba))
+            
+            if pred == 1:
+                return EmailClassifyResponse(
+                    important=True,
+                    reason="Clasificador ML: importante",
+                    confidence=confidence,
+                    category="ml_prediction",
+                    subject=req.subject,
+                    from_=req.from_
+                )
+            else:
+                return EmailClassifyResponse(
+                    important=False,
+                    reason="Clasificador ML: no importante",
+                    confidence=confidence,
+                    category="ml_prediction",
+                    subject=req.subject,
+                    from_=req.from_
+                )
+
+        # 3) Fallback: similarity with examples
+        combined_text = f"{req.subject} {body_clean}"
+        emb = embedder.encode([combined_text], convert_to_numpy=True)
+        
+        pos_sim = cosine_similarity(emb, pos_embs).max()
+        neg_sim = cosine_similarity(emb, neg_embs).max()
+        
+        if pos_sim > neg_sim and pos_sim > FALLBACK_THRESHOLD:
+            return EmailClassifyResponse(
+                important=True,
+                reason=f"Similitud con ejemplos importantes ({pos_sim:.2f})",
+                confidence=float(pos_sim),
+                category="similarity",
+                subject=req.subject,
+                from_=req.from_
+            )
+        else:
+            return EmailClassifyResponse(
+                important=False,
+                reason=f"Similitud baja o negativa ({neg_sim:.2f})",
+                confidence=float(neg_sim),
+                category="similarity",
+                subject=req.subject,
+                from_=req.from_
+            )
+
+    except Exception as e:
+        logger.exception("Error clasificando email: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "model": MODEL_NAME}
+
+
+# ----- Run server -----
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

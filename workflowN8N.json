@@ -1,0 +1,157 @@
+{
+    "name": "Email Classifier with Telegram Notification",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "73d78097-d4e1-4b45-80cb-4f951d22dd4f",
+            "name": "IMAP Email Trigger",
+            "type": "n8n-nodes-base.imap",
+            "typeVersion": 1,
+            "position": [
+                -1728,
+                -192
+            ],
+            "credentials": {}
+        },
+        {
+            "parameters": {
+                "url": "http://mail-classifier:8000/classify",
+                "jsonParameters": true,
+                "options": {}
+            },
+            "id": "4fab4ea9-32e2-4a39-a63a-526b4c8a9555",
+            "name": "Send to Classifier",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                -1168,
+                -160
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json[\"important\"] }}"
+                        }
+                    ]
+                }
+            },
+            "id": "45afff9c-0b24-4b4a-b2b0-bb52dcccc8d6",
+            "name": "Is Important?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                -944,
+                -160
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "=123456789",
+                "text": "📩 *Nuevo correo IMPORTANTE*\n\n*Asunto:* {{$json.subject}}\n*Motivo:* {{$json.reason}}\n\n_Clasificado automáticamente por tu IA local._",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "id": "0c24c5c7-292b-4d08-8967-037bb314123c",
+            "name": "Send Telegram",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                -720,
+                -352
+            ],
+            "webhookId": "ae404e2e-9866-417c-9d59-74f622041586",
+            "credentials": {
+                "telegramApi": {
+                    "id": "gKbnCrnN1K4SQSvb",
+                    "name": "Telegram account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+            "typeVersion": 1.4,
+            "position": [
+                -1776,
+                128
+            ],
+            "id": "c571d70f-1dcd-4dce-a241-874b1328bd95",
+            "name": "When chat message received",
+            "webhookId": "c073fb09-c689-4813-b5be-860c7324cd7c"
+        },
+        {
+            "parameters": {
+                "operation": "get",
+                "messageId": "1231313132"
+            },
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                -1456,
+                -160
+            ],
+            "id": "53cf95f6-1d92-4ed7-a908-995bff22068b",
+            "name": "Get a message",
+            "webhookId": "8fbaf769-92fa-47dc-84d1-a30f298b313d",
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "Ic6XrD228tVmNSeW",
+                    "name": "Gmail account"
+                }
+            }
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Send to Classifier": {
+            "main": [
+                [
+                    {
+                        "node": "Is Important?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Important?": {
+            "main": [
+                [
+                    {
+                        "node": "Send Telegram",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get a message": {
+            "main": [
+                [
+                    {
+                        "node": "Send to Classifier",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "78c57552-88a9-4360-8dfe-65467a1eea6c",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "fca30933992396252c229705a1a6b5af49d1ae5b88fbd6ce7375c327ed3707af"
+    },
+    "id": "ZCp0cbMEXDtXiWYZ",
+    "tags": []
+}
